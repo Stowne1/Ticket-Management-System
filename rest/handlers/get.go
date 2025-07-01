@@ -11,12 +11,6 @@ import (
 // Ticket struct should match the one in create.go
 // If you move it to a shared file, import from there
 
-type Ticket struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-}
-
 // GetTicketHandler handles GET /tickets/:id
 func GetTicketHandler(db *postgres.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
