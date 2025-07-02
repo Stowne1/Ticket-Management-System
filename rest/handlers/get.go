@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"Ticket-Management-System-1/postgres"
 	"net/http"
 	"strconv"
 
@@ -12,7 +11,7 @@ import (
 // If you move it to a shared file, import from there
 
 // GetTicketHandler handles GET /tickets/:id
-func GetTicketHandler(db *postgres.DB) gin.HandlerFunc {
+func GetTicketHandler(db Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)

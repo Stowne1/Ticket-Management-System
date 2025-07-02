@@ -3,11 +3,19 @@ package handlers
 //write a post api handler that calls the postgres insert method
 
 import (
-	"Ticket-Management-System-1/postgres"
+	"database/sql"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Database interface for dependency injection
+type Database interface {
+	Insert(query string, args ...interface{}) error
+	Retrieve(query string, args ...interface{}) (*sql.Rows, error)
+	Update(query string, args ...interface{}) error
+	Delete(query string, args ...interface{}) error
+}
 
 // Ticket represents a support ticket
 // ID is omitted in POST, assumed auto-incremented by DB
@@ -19,7 +27,7 @@ type Ticket struct {
 }
 
 // CreateTicketHandler handles POST /tickets
-func CreateTicketHandler(db *postgres.DB) gin.HandlerFunc {
+func CreateTicketHandler(db Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ticket Ticket
 		if err := c.ShouldBindJSON(&ticket); err != nil {
