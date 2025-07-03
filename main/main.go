@@ -3,19 +3,24 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/user"
 
 	"Ticket-Management-System-1/postgres"
+	"Ticket-Management-System-1/rest/handlers"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// Step 1: Load DATABASE_URL from env
-	connStr := os.Getenv("DATABASE_URL")
-	if connStr == "" {
-		fmt.Println("DATABASE_URL environment variable is not set")
+	// Get current user for database connection
+	currentUser, err := user.Current()
+	if err != nil {
+		fmt.Println("Error getting current user:", err)
 		return
 	}
+
+	// Use current username for database connection
+	connStr := fmt.Sprintf("postgres://%s@localhost:5432/ticket_system?sslmode=disable", currentUser.Username)
 
 	// Step 2: Connect to the database
 	db, err := postgres.NewDB(connStr)
@@ -26,28 +31,10 @@ func main() {
 
 	// Step 3: Set up Gin
 	router := gin.Default()
-
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Hello, world!"})
-	})
-
-	router.GET("/example", func(c *gin.Context) {
-		rows, err := db.Retrieve("SELECT id, name FROM your_table LIMIT 1")
-		if err != nil {
-			c.JSON(500, gin.H{"error": "DB error"})
-			return
-		}
-		defer rows.Close()
-
-		var id int
-		var name string
-		if rows.Next() {
-			rows.Scan(&id, &name)
-			c.JSON(200, gin.H{"id": id, "name": name})
-		} else {
-			c.JSON(404, gin.H{"error": "No data found"})
-		}
-	})
+	router.POST("/tickets", handlers.CreateTicketHandler(db))
+	router.GET("/tickets/:id", handlers.GetTicketHandler(db))
+	router.PUT("/tickets/:id", handlers.UpdateTicketHandler(db))
+	router.DELETE("/tickets/:id", handlers.DeleteTicketHandler(db))
 
 	// Step 4: Start the server
 	port := os.Getenv("PORT")
