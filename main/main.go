@@ -6,9 +6,7 @@ import (
 	"os/user"
 
 	"Ticket-Management-System-1/postgres"
-	"Ticket-Management-System-1/rest/handlers"
-
-	"github.com/gin-gonic/gin"
+	"Ticket-Management-System-1/rest/router"
 )
 
 func main() {
@@ -29,17 +27,11 @@ func main() {
 		return
 	}
 
-	// Step 3: Set up Gin
-	router := gin.Default()
-	router.POST("/tickets", handlers.CreateTicketHandler(db))
-	router.GET("/tickets/:id", handlers.GetTicketHandler(db))
-	router.PUT("/tickets/:id", handlers.UpdateTicketHandler(db))
-	router.DELETE("/tickets/:id", handlers.DeleteTicketHandler(db))
-
+	engine := router.Setup(db)
 	// Step 4: Start the server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	router.Run(":" + port)
+	engine.Run(":" + port)
 }
