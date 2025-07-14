@@ -1,37 +1,32 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"os/user"
-
 	"Ticket-Management-System-1/postgres"
 	"Ticket-Management-System-1/rest/router"
+	"log"
+	"os"
 )
 
+// main is the entry point for the Ticket Management System server.
+// It initializes the database, sets up the router, and starts the HTTP server.
 func main() {
-	// Get current user for database connection
-	currentUser, err := user.Current()
-	if err != nil {
-		fmt.Println("Error getting current user:", err)
-		return
+	// Get the Postgres connection string from the environment variable
+	connStr := os.Getenv("POSTGRES_DSN")
+	if connStr == "" {
+		log.Fatal("POSTGRES_DSN environment variable is not set")
 	}
 
-	// Use current username for database connection
-	connStr := fmt.Sprintf("postgres://%s@localhost:5432/ticket_system?sslmode=disable", currentUser.Username)
-
-	// Step 2: Connect to the database
+	// Initialize the Bun-backed Postgres DB
 	db, err := postgres.NewDB(connStr)
 	if err != nil {
-		fmt.Println("Error connecting to the database:", err)
-		return
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	engine := router.Setup(db)
-	// Step 4: Start the server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Set up the Gin router with all ticket handlers
+	r := router.Setup(db)
+
+	// Start the HTTP server on port 8080
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
-	engine.Run(":" + port)
 }
