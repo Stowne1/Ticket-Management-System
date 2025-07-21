@@ -30,8 +30,13 @@ func GetTicketHandler(db TicketGetter) gin.HandlerFunc {
 		// Retrieve the ticket from the database
 		ticket, err := db.GetTicketByID(c.Request.Context(), id)
 		if err != nil {
-			// If retrieval fails, return 404
-			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid ticket ID"})
+			// If retrieval fails, return 500
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+			return
+		}
+		if ticket == nil {
+			// If no ticket is found, return 404
+			c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})
 			return
 		}
 		// Return the ticket as JSON
