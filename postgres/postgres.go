@@ -31,6 +31,10 @@ type DB struct {
 func NewDB(connStr string) (*DB, error) {
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(connStr)))
 	db := bun.NewDB(sqldb, pgdialect.New())
+	err := db.Ping()
+	if err != nil {
+		return nil, err
+	}
 	return &DB{Conn: db}, nil
 }
 

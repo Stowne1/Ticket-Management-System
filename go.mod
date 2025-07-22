@@ -1,8 +1,6 @@
 module Ticket-Management-System-1
 
-go 1.23.0
-
-toolchain go1.23.11
+go 1.24
 
 require (
 	github.com/gin-gonic/gin v1.10.0

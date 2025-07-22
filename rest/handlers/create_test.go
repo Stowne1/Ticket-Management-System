@@ -41,6 +41,14 @@ func TestCreateTicketHandler_Success(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
 	}
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	if response["message"] != "Ticket created successfully" {
+		t.Errorf("Expected success message, got %s", response["message"])
+	}
+	if response["id"] == nil {
+		t.Errorf("Expected an id in the response, got nil")
+	}
 }
 
 func TestCreateTicketHandler_InvalidJSON(t *testing.T) {
