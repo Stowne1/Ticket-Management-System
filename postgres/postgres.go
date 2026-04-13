@@ -48,15 +48,36 @@ func (db *DB) InsertTicket(ctx context.Context, ticket *Ticket) error {
 // UpdateTicket updates an existing ticket in the database using Bun ORM.
 // The ticket must have a valid ID (primary key).
 func (db *DB) UpdateTicket(ctx context.Context, ticket *Ticket) error {
-	_, err := db.Conn.NewUpdate().Model(ticket).WherePK().Exec(ctx)
-	return err
+	result, err := db.Conn.NewUpdate().Model(ticket).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+
 }
 
 // DeleteTicket deletes a ticket by its ID using Bun ORM.
 // Returns an error if the delete fails or the ticket does not exist.
 func (db *DB) DeleteTicket(ctx context.Context, id int64) error {
-	_, err := db.Conn.NewDelete().Model((*Ticket)(nil)).Where("id = ?", id).Exec(ctx)
-	return err
+	result, err := db.Conn.NewDelete().Model((*Ticket)(nil)).Where("id = ?", id).Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // GetTicketByID retrieves a ticket by its ID using Bun ORM.

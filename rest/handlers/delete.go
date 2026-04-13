@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -27,8 +29,13 @@ func DeleteTicketHandler(db TicketDeleter) gin.HandlerFunc {
 			return
 		}
 		// Delete the ticket using the provided database interface
-		if err := db.DeleteTicket(c.Request.Context(), id); err != nil {
-			// If deletion fails, return 500
+		err = db.DeleteTicket(c.Request.Context(), id)
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})
+			return
+		}
+		// if deletion fails, return 500
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete ticket"})
 			return
 		}

@@ -5,6 +5,8 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"errors"
+	"database/sql"
 	
 	"github.com/gin-gonic/gin"
 )
@@ -34,11 +36,19 @@ func UpdateTicketHandler(db TicketUpdater) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 			return
 		}
+		if ticket.Title == "" || ticket.Description == "" || ticket.Status == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "All fields are required"})
+			return
+		}
 		// Set the ticket ID from the URL parameter
 		ticket.ID = id
 		// Update the ticket using the provided database interface
-		if err := db.UpdateTicket(c.Request.Context(), &ticket); err != nil {
-			// If update fails, return 500
+	    err = db.UpdateTicket(c.Request.Context(), &ticket)
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})
+			return
+		}
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ticket"})
 			return
 		}

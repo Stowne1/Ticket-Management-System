@@ -33,7 +33,7 @@ func CreateTicketHandler(db TicketInserter) gin.HandlerFunc {
 		// Insert the ticket using the provided database interface
 		if err := db.InsertTicket(c.Request.Context(), &ticket); err != nil {
 			// If insertion fails, return a 500 error
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ticket"})
 			return
 		}
 		// On success, return a 201 status and success message
