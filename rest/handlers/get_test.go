@@ -3,6 +3,7 @@ package handlers
 import (
 	"Ticket-Management-System-1/postgres"
 	"context"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,7 +22,7 @@ func (db *testGetDB) GetTicketByID(ctx context.Context, id int64) (*postgres.Tic
 		return nil, db.findErr
 	}
 	if !db.found {
-		return nil, nil
+		return nil, sql.ErrNoRows
 	}
 	return db.result, nil
 }
