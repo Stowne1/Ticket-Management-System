@@ -93,3 +93,16 @@ func (db *DB) GetTicketByID(ctx context.Context, id int64) (*Ticket, error) {
 	}
 	return ticket, nil
 }
+
+func (db *DB) ListTickets(ctx context.Context, limit, offset int) ([]Ticket, error) {
+	var tickets []Ticket
+	err := db.Conn.NewSelect().
+		Model(&tickets).
+		Limit(limit).
+		Offset(offset).
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tickets, nil
+}		

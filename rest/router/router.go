@@ -3,6 +3,7 @@ package router
 import (
 	"Ticket-Management-System-1/postgres"
 	"Ticket-Management-System-1/rest/handlers"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,6 +13,10 @@ import (
 func Setup(db *postgres.DB) *gin.Engine {
 	// Create a new Gin router instance
 	router := gin.Default()
+
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	// Register the POST /tickets route for creating a new ticket
 	router.POST("/tickets", handlers.CreateTicketHandler(db))
@@ -24,6 +29,8 @@ func Setup(db *postgres.DB) *gin.Engine {
 
 	// Register the DELETE /tickets/:id route for deleting a ticket by ID
 	router.DELETE("/tickets/:id", handlers.DeleteTicketHandler(db))
+
+	router.GET("/tickets", handlers.ListTicketsHandler(db))
 
 	// Return the configured router
 	return router
