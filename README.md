@@ -17,7 +17,7 @@ Ticket Management Microservice is a lightweight backend service built with Go fo
 - Git
 
 2. Clone the Repository
-git clone <your-repo-url>
+git clone <https://github.com/Stowne1/Ticket-Management-System.git>
 cd Ticket-Management-System-1
 
 3. Start Services
