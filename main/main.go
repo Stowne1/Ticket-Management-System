@@ -26,6 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
+	defer db.Conn.Close()
 
 	// Set up the Gin router with all ticket handlers
 	r := router.Setup(db)
