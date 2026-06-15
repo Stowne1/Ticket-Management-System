@@ -40,6 +40,11 @@ func UpdateTicketHandler(db TicketUpdater) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "All fields are required"})
 			return
 		}
+		// validStatuses is defined in create.go (same package) and shared here.
+		if !validStatuses[ticket.Status] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "status must be one of: open, in_progress, closed"})
+			return
+		}
 		// Set the ticket ID from the URL parameter
 		ticket.ID = id
 		// Update the ticket using the provided database interface

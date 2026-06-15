@@ -1,4 +1,4 @@
--- bun: migration
+-- bun:migration
 CREATE TABLE tickets (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,

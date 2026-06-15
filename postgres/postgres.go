@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"context"
+	"time"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -15,10 +16,12 @@ import (
 // Ticket represents a support ticket in the system.
 // The struct tags configure Bun ORM and JSON serialization.
 type Ticket struct {
-	ID          int64  `bun:"id,pk,autoincrement" json:"id"` // Primary key, auto-incremented
-	Title       string `bun:",notnull" json:"title"`         // Title of the ticket
-	Description string `bun:",notnull" json:"description"`   // Description of the issue
-	Status      string `bun:",notnull" json:"status"`        // Status (e.g., open, closed)
+	ID          int64     `bun:"id,pk,autoincrement" json:"id"` // Primary key, auto-incremented
+	Title       string    `bun:",notnull" json:"title"`         // Title of the ticket
+	Description string    `bun:",notnull" json:"description"`   // Description of the issue
+	Status      string    `bun:",notnull" json:"status"`        // Status (e.g., open, closed)
+	CreatedAt   time.Time `bun:",notnull,default:current_timestamp" json:"created_at"`
+	UpdatedAt   time.Time `bun:",notnull,default:current_timestamp" json:"updated_at"`
 }
 
 // DB wraps a Bun database connection and provides methods for ticket operations.
@@ -48,6 +51,10 @@ func (db *DB) InsertTicket(ctx context.Context, ticket *Ticket) error {
 // UpdateTicket updates an existing ticket in the database using Bun ORM.
 // The ticket must have a valid ID (primary key).
 func (db *DB) UpdateTicket(ctx context.Context, ticket *Ticket) error {
+	// Set UpdatedAt here rather than relying on the caller or the DB default.
+	// The DEFAULT NOW() in the schema only fires on INSERT, not UPDATE, so
+	// without this line every update would write Go's zero time (0001-01-01).
+	ticket.UpdatedAt = time.Now()
 	result, err := db.Conn.NewUpdate().Model(ticket).WherePK().Exec(ctx)
 	if err != nil {
 		return err
@@ -95,9 +102,14 @@ func (db *DB) GetTicketByID(ctx context.Context, id int64) (*Ticket, error) {
 }
 
 func (db *DB) ListTickets(ctx context.Context, limit, offset int) ([]Ticket, error) {
-	var tickets []Ticket
+	// Initialise as an empty (non-nil) slice so JSON serialises to [] not null
+	// when there are no tickets.
+	tickets := make([]Ticket, 0)
 	err := db.Conn.NewSelect().
 		Model(&tickets).
+		// ORDER BY id ensures the order is deterministic across pages.
+		// Without this, Postgres can return rows in any order.
+		OrderExpr("id ASC").
 		Limit(limit).
 		Offset(offset).
 		Scan(ctx)
@@ -105,4 +117,14 @@ func (db *DB) ListTickets(ctx context.Context, limit, offset int) ([]Ticket, err
 		return nil, err
 	}
 	return tickets, nil
-}		
+}
+
+// CountTickets returns the total number of tickets in the database.
+// Used by the list endpoint to tell clients how many pages exist.
+func (db *DB) CountTickets(ctx context.Context) (int, error) {
+	count, err := db.Conn.NewSelect().Model((*Ticket)(nil)).Count(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

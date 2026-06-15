@@ -8,6 +8,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// validStatuses is the complete set of values the status field may hold.
+// Validating here (rather than relying on the DB) gives callers a clear error
+// message instead of a silent bad write or a generic 500.
+var validStatuses = map[string]bool{
+	"open":        true,
+	"in_progress": true,
+	"closed":      true,
+}
+
 // TicketInserter defines the interface for inserting a ticket into the database.
 type TicketInserter interface {
 	InsertTicket(ctx context.Context, ticket *postgres.Ticket) error
@@ -19,24 +28,23 @@ type TicketInserter interface {
 func CreateTicketHandler(db TicketInserter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ticket postgres.Ticket
-		// Bind the incoming JSON to the ticket struct
 		if err := c.ShouldBindJSON(&ticket); err != nil {
-			// If the JSON is invalid, return a 400 error
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 			return
 		}
-		// Validate required fields
 		if ticket.Title == "" || ticket.Description == "" || ticket.Status == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "All fields are required"})
 			return
 		}
-		// Insert the ticket using the provided database interface
+		// Reject any status value that isn't in our allowed set.
+		if !validStatuses[ticket.Status] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "status must be one of: open, in_progress, closed"})
+			return
+		}
 		if err := db.InsertTicket(c.Request.Context(), &ticket); err != nil {
-			// If insertion fails, return a 500 error
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ticket"})
 			return
 		}
-		// On success, return a 201 status and success message
 		c.JSON(http.StatusCreated, gin.H{
 			"message": "Ticket created successfully",
 			"id":      ticket.ID,

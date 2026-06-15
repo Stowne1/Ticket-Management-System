@@ -3,6 +3,8 @@ package main
 import (
 	"Ticket-Management-System-1/postgres"
 	"Ticket-Management-System-1/rest/router"
+	"Ticket-Management-System-1/migrations"
+	"github.com/uptrace/bun/migrate"
 	"context"
 	"log"
 	"net/http"
@@ -27,6 +29,20 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Conn.Close()
+
+	// Run migrations on startup
+	ctx := context.Background()
+	migs := migrate.NewMigrations()
+	if err := migs.Discover(migrations.FS); err != nil {
+		log.Fatalf("Failed to discover migrations: %v", err)
+	}
+	migrator := migrate.NewMigrator(db.Conn, migs)
+	if err := migrator.Init(ctx); err != nil {
+		log.Fatalf("Failed to init migrator: %v", err)
+	}
+	if _, err := migrator.Migrate(ctx); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
 
 	// Set up the Gin router with all ticket handlers
 	r := router.Setup(db)

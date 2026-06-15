@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,6 +47,25 @@ func TestDeleteTicketHandler_InvalidID(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// TestDeleteTicketHandler_NotFound checks that deleting a non-existent ticket
+// returns 404. The handler maps sql.ErrNoRows (returned by the DB when no row
+// was deleted) to StatusNotFound.
+func TestDeleteTicketHandler_NotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	db := &testDeleteDB{deleteErr: sql.ErrNoRows}
+	router.DELETE("/tickets/:id", DeleteTicketHandler(db))
+
+	req, _ := http.NewRequest("DELETE", "/tickets/999", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
 	}
 }
 
