@@ -29,6 +29,8 @@ services:
         condition: service_healthy
     environment:
       POSTGRES_DSN: postgres://ticketuser:ticketpass@db:5432/ticketdb?sslmode=disable
+      # In production replace this with a long random string (e.g. openssl rand -hex 32).
+      JWT_SECRET: local-dev-secret-change-in-production
     ports:
       - "8080:8080"
 

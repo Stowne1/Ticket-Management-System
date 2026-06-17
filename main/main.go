@@ -44,8 +44,16 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
+	// JWT_SECRET is used to sign and verify all tokens.
+	// The server refuses to start without it — an empty secret would let
+	// anyone forge tokens by signing with an empty string.
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is not set")
+	}
+
 	// Set up the Gin router with all ticket handlers
-	r := router.Setup(db)
+	r := router.Setup(db, jwtSecret)
 
 	srv := &http.Server{
 		Addr:    ":8080",
