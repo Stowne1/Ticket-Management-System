@@ -1,6 +1,7 @@
 .DS_Store
 # compiled binary produced by `go build`
 ticket-app
-# frontend dependencies
+# frontend dependencies and build output
 frontend/node_modules
-frontend/dist
+frontend/dist/*
+!frontend/dist/.gitkeep
