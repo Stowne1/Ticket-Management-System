@@ -15,7 +15,7 @@ COPY . .
 # Copy the built frontend into place so the Go embed picks it up
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 WORKDIR /app/main
-RUN go build -o /go/bin/ticket-app
+RUN go build -tags production -o /go/bin/ticket-app
 
 # Stage 3: minimal runtime image
 FROM alpine:latest
