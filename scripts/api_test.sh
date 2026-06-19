@@ -1,49 +1,83 @@
 #!/bin/bash
 # API Smoke Test Script for Ticket Management System
-# Tests create, get, update, delete, and error cases for /tickets endpoints
+# Requires a running server on localhost:8080.
 
-API_URL="http://localhost:8080/tickets"
+BASE="http://localhost:8080/api"
+TICKETS="$BASE/tickets"
+PASS=0
+FAIL=0
 
-# 1. Create a ticket
+check() {
+  local label="$1" got="$2" want="$3"
+  if [ "$got" = "$want" ]; then
+    echo "  PASS: $label (HTTP $got)"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: $label — expected HTTP $want, got HTTP $got"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+# --- Auth setup ---
+# Register a dedicated smoke-test user (may already exist on re-runs; that's fine).
+printf "\n=== Register test user ===\n"
+curl -s -o /dev/null -X POST "$BASE/register" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"smoketest@example.com","password":"smokepass123"}'
+
+printf "\n=== Login ===\n"
+LOGIN=$(curl -s -X POST "$BASE/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"smoketest@example.com","password":"smokepass123"}')
+echo "$LOGIN"
+
+# Extract token without requiring jq
+TOKEN=$(echo "$LOGIN" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+if [ -z "$TOKEN" ]; then
+  echo "ERROR: could not get auth token — aborting smoke test"
+  exit 1
+fi
+AUTH="Authorization: Bearer $TOKEN"
+
+# --- Ticket CRUD ---
 printf "\n=== Create Ticket ===\n"
-CREATE_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X POST "$API_URL" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Test Ticket","description":"Test Desc","status":"open"}')
-echo "$CREATE_RESPONSE"
+CREATE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X POST "$TICKETS" \
+  -H "Content-Type: application/json" -H "$AUTH" \
+  -d '{"title":"Smoke Test Ticket","description":"Created by smoke test","status":"open"}')
+echo "$CREATE"
+check "Create ticket" "$(echo "$CREATE" | grep -o 'HTTP_STATUS:[0-9]*' | cut -d: -f2)" "201"
 
-# Extract ID (assume ID is 1 for this test, or adjust as needed)
-TICKET_ID=1
+TICKET_ID=$(echo "$CREATE" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+if [ -z "$TICKET_ID" ]; then TICKET_ID=1; fi
 
-# 2. Get the ticket by ID
 printf "\n=== Get Ticket ===\n"
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" "$API_URL/$TICKET_ID"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "$AUTH" "$TICKETS/$TICKET_ID")
+check "Get ticket" "$STATUS" "200"
 
-# 3. Update the ticket
 printf "\n=== Update Ticket ===\n"
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X PUT "$API_URL/$TICKET_ID" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Test Ticket","description":"Updated Desc","status":"closed"}'
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$TICKETS/$TICKET_ID" \
+  -H "Content-Type: application/json" -H "$AUTH" \
+  -d '{"title":"Updated Title","description":"Updated desc","status":"closed"}')
+check "Update ticket" "$STATUS" "200"
 
-# 4. Delete the ticket
 printf "\n=== Delete Ticket ===\n"
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X DELETE "$API_URL/$TICKET_ID"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "$AUTH" "$TICKETS/$TICKET_ID")
+check "Delete ticket" "$STATUS" "200"
 
-# 5. Error: Create with missing fields
-printf "\n=== Create Ticket (Missing Fields) ===\n"
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X POST "$API_URL" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"","description":"","status":""}'
+# --- Error cases ---
+printf "\n=== Create ticket with missing fields ===\n"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$TICKETS" \
+  -H "Content-Type: application/json" -H "$AUTH" \
+  -d '{"title":"","description":"","status":""}')
+check "Missing fields → 400" "$STATUS" "400"
 
-# 6. Error: Get non-existent ticket
-printf "\n=== Get Non-existent Ticket ===\n"
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" "$API_URL/9999"
+printf "\n=== Get non-existent ticket ===\n"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "$AUTH" "$TICKETS/999999")
+check "Not found → 404" "$STATUS" "404"
 
-# 7. Error: Update with invalid ID
-printf "\n=== Update Invalid Ticket ===\n"
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X PUT "$API_URL/9999" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Test Ticket","description":"Updated Desc","status":"closed"}'
+printf "\n=== Request without token ===\n"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$TICKETS")
+check "No token → 401" "$STATUS" "401"
 
-# 8. Error: Delete with invalid ID
-printf "\n=== Delete Invalid Ticket ===\n"
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X DELETE "$API_URL/9999" 
+printf "\n=== Results: $PASS passed, $FAIL failed ===\n"
+[ "$FAIL" -eq 0 ]

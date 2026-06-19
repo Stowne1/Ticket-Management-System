@@ -25,20 +25,36 @@ jobs:
           --health-retries 5
     env:
       POSTGRES_DSN: postgres://ticketuser:ticketpass@localhost:5432/ticketdb?sslmode=disable
+      JWT_SECRET: ci-test-secret-not-for-production
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.24'
+
       - name: Install dependencies
         run: go mod download
+
       - name: Run Go tests
         run: go test ./...
-      - name: Build and run app
+
+      - name: Build app
+        run: go build -o ticket-app ./main
+
+      - name: Start app
+        run: nohup ./ticket-app &
+
+      - name: Wait for server to be ready
+        # Poll /api/health until the server responds (up to 30 seconds).
+        # This is more reliable than a fixed sleep.
         run: |
-          go build -o ticket-app ./main
-          nohup ./ticket-app &
-          sleep 5
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/api/health && echo "Server ready" && break
+            sleep 1
+          done
+
       - name: Run API smoke test
-        run: sh scripts/api_test.sh 
+        run: sh scripts/api_test.sh
